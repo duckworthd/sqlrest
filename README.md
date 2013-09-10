@@ -13,7 +13,7 @@ Usage
 $ python -m sqlrest.server \
   --frontend.port 8000 \
   --frontend.host '0.0.0.0' \
-  --db.uri "mysql://root:@localhost:3306/erinys"
+  --db.uri "mysql://root:@localhost:3306/kittendb"
 ```
 
 
