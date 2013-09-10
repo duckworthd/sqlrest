@@ -37,9 +37,10 @@ $ http get localhost:8000/asimi/select <<< '{
       "status": ["incorrect", "no_erinys_extractions"],
       "timestamp": ["2009-08-01", "2009-09-01"]
     },
+    "columns": ["id", "domain", "field_name"],
     "page": 0,
     "page_size": 1000
-  }'  # get rows where domain == com.amazon and status is either correct or incorrect
+  }'  # get "id", "domain", and "field_name" columns from first 1000 rows where domain == com.amazon and status is either "incorrect" or "no_erinys_extractions"
 ```
 
 Filters
