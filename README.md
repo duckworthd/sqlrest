@@ -30,7 +30,7 @@ $ http get localhost:8000/asimi/aggregate <<< '{
     "filters": {"timestamp": ["2009-08-01", "2009-09-01"]},
     "aggfunc": "count",
     "aggcol": "id"
-  }'  # count the number of unique ids per (domain, status) pair between 08/01 and 09/01
+  }'  # count the number of unique `id` elements per (domain, status) pair between 08/01 and 09/01
 $ http get localhost:8000/asimi/select <<< '{
     "filters": {
       "domain": "com.amazon",
