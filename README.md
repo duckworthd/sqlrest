@@ -8,7 +8,7 @@ to databases, `bottle` to talk to web clients.
 Usage
 =====
 
-```python
+```bash
 # start server on port 8000 mapped to a MySQL instance
 $ python -m sqlrest.server \
   --frontend.port 8000 \
@@ -20,7 +20,9 @@ $ python -m sqlrest.server \
 Querying
 ========
 
-```python
+Using the wonderful [httpie](https://github.com/jkbr/httpie) project,
+
+```bash
 $ http get localhost:8000/tables        # get a list of tables
 $ http get localhost:8000/asimi/column  # get a list of columns in table "asimi"
 $ http get localhost:8000/asimi/aggregate <<< '{
@@ -63,8 +65,9 @@ Let's take the following example,
 
 In this scenario, only rows where `domain == "com.amazon"`, `status` is one of
 `"incorrect"` or `"no_erinys_extractions"`, and `timestamp` is after
-"2009-08-01" but before "2009-09-01" are included. To select one of a finite
-set of `timestamp`s, you must simply use a value with more than 2 values, e.g.
+`"2009-08-01"` but before `"2009-09-01"` are included. To select one of a
+finite set of `timestamp`s, you must simply use a value with more than 2
+values, e.g.
 
 ```json
 {
