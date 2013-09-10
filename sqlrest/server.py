@@ -27,7 +27,7 @@ def main(config):
   app.run(
     port=config.frontend.port,
     host=config.frontend.host,
-    server=bottle.CherryPyServer,
+    server='tornado',
   )
 
 

@@ -21,6 +21,6 @@ setup(
       'bottle>=0.11.6',
       'SQLAlchemy>=0.8.2',
       'MySQL-python>=1.2.4',
-      'CherryPy>=3.2.4',
+      'tornado>=3.1.1',
     ],
 )
