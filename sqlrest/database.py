@@ -27,19 +27,14 @@ class Database(object):
 
     session = self.sessionmaker()
     try:
-      filters_    = querify(filters, table_)
       groupby_    = [ label(c, str2col(c, table_)) for c in groupby ]
       aggregate_  = [ label(a, str2col(a, table_)) for a in aggregate ]
-      query       = (
-          session
-          .query(*(aggregate_ + groupby_))
-          .filter(filters_)
-          .group_by(*groupby_)
-      )
-      if orderby is not None:
-        query = query.order_by(str2col(orderby, table_))
 
-      query = query.slice(page * page_size, (page + 1) * page_size)
+      query = session.query(*(aggregate_ + groupby_))
+      query = with_filters(query, table_, filters)
+      query = query.group_by(*groupby_)
+      query = with_orderby(query, table_, orderby)
+      query = with_pagination(query, table_, page, page_size)
 
       return result2dict(query.all())
     finally:
@@ -60,18 +55,10 @@ class Database(object):
 
     session = self.sessionmaker()
     try:
-      filters_ = querify(filters, table_)
-      query   = (
-          session
-          .query(*columns_)
-          .filter(filters_)
-      )
-
-      if orderby is not None:
-        query = query.order_by(str2col(orderby, table_))
-
-      query = query.slice(page * page_size, (page + 1) * page_size)
-
+      query = session.query(*columns_)
+      query = with_filters(query, table_, filters)
+      query = with_orderby(query, table_, orderby)
+      query = with_pagination(query, table_, page, page_size)
       return result2dict(query.all())
     finally:
       session.close()
@@ -102,19 +89,18 @@ class Database(object):
       raise SqlRestException("No table named '%s' (available: '%s')" % (table, ", ".join(self.tables())))
 
 
-def querify(q, table):
-  """Transform a JSON blob into a proper SQLAlchemy query"""
+def where_clause(filters, table_):
+  """Transform a JSON blob into a where clause"""
   def iscontinuous(c):
     types     = [s.DateTime, s.Date, s.Time, s.SmallInteger, s.Integer, s.BigInteger, s.Float]
     functypes = {'date'}  # some functions have incorrect return types
     return any(isinstance(c.type, type_) for type_ in types) \
-        or (isinstance(c, s.sql.expression.Function) \
-            and c.name.lower() in functypes)
+        or (isinstance(c, s.sql.expression.Function) and c.name.lower() in functypes)
 
   clauses = []
   # for each query attribute
-  for k, v in q.iteritems():
-    c = str2col(k, table)
+  for k, v in filters.iteritems():
+    c = str2col(k, table_)
     if isinstance(v, list):
       if iscontinuous(c) and len(v) == 2:
         # if it's a continuous field and there are 2 values, it's a range query
@@ -122,12 +108,32 @@ def querify(q, table):
         clauses.append(c <= v[1])
       else:
         # if the field isn't continuous or the number of values != 2, it's an "or" query
-        clauses.append( s.or_(*[str2col(k, table) == v_ for v_ in v]) )
+        clauses.append( s.or_(*[c == v_ for v_ in v]) )
     else:
       # otherwise, make an equality restriction
-      clauses.append( getcolumn(k) == v )
+      clauses.append( c == v )
 
   return s.and_(*clauses)
+
+
+def with_pagination(query, table_, page, page_size):
+  return query.slice(page * page_size, (page + 1) * page_size)
+
+
+def with_orderby(query, table_, orderby):
+  if orderby is not None:
+    if isinstance(orderby, list):
+      orderby, direction = orderby
+    else:
+      direction = 'ascending'
+    direction_ = s.desc if direction.lower() == 'descending' else s.asc
+    query = query.order_by(direction_(str2col(orderby, table_)))
+  return query
+
+
+def with_filters(query, table_, filters):
+  filters_ = where_clause(filters, table_)
+  return query.filter(filters_)
 
 
 def str2col(field, table):

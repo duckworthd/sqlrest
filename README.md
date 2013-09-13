@@ -31,17 +31,25 @@ $ http get localhost:8000/kittens/columns
 
 # SELECT breed, location, count(*), min(birthday) FROM KITTENS
 #   WHERE date(birthday) <= "2009-08-01" AND date(birthday) >= "2009-09-01"
-#   GROUP BY breed, location;
+#   GROUP BY breed, location
+#   ORDER BY count(*) DESC
+#   LIMIT 0, 10;
 $ http get localhost:8000/kittens/aggregate <<< '{
     "groupby": ["breed", "location"],
-    "filters": {"date(birthday)": ["2009-08-01", "2009-09-01"]},
-    "aggregate": ["count(*)", "min(birthday)"]
+    "filters": {
+      "date(birthday)": ["2009-08-01", "2009-09-01"]
+    },
+    "aggregate": ["count(*)", "min(birthday)"],
+    "orderby": ["count(*)", "descending"],
+    "page": 0,
+    "page_size": 10
   }'
 
 # SELECT name, location FROM kittens
-#   WHERE name = "Mittens" AND
+#   WHERE (name = "Mittens") AND
 #     (breed = "Calico" OR breed = "Persian") AND
 #     (birthday >= "2009-08-01" AND birthday <= "2009-09-01");
+#   ORDER BY name
 #   LIMIT 50, 60;
 $ http get localhost:8000/kittens/select <<< '{
     "filters": {
@@ -50,6 +58,7 @@ $ http get localhost:8000/kittens/select <<< '{
       "birthday": ["2009-08-01", "2009-09-01"]
     },
     "columns": ["name", "location"],
+    "orderby": "name"
     "page": 5,
     "page_size": 10
   }'
