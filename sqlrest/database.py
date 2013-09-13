@@ -16,7 +16,7 @@ class Database(object):
     # discover what tables are available
     self.meta.reflect(engine)
 
-  def aggregate(self, table, groupby, filters={}, aggregate='count(*)', orderby=None):
+  def aggregate(self, table, groupby, filters={}, aggregate='count(*)', page=0, page_size=100, orderby=None):
     table_  = self._table(table)
     columnd = { col.name:col for col in table_.columns }
 
@@ -27,20 +27,25 @@ class Database(object):
 
     session = self.sessionmaker()
     try:
-      filters_  = querify(filters, table_)
-      groupby_  = [ label(c, str2col(c, table_)) for c in groupby ]
-      aggregate_ = [ label(a, str2col(a, table_)) for a in aggregate ]
-      query   = (
+      filters_    = querify(filters, table_)
+      groupby_    = [ label(c, str2col(c, table_)) for c in groupby ]
+      aggregate_  = [ label(a, str2col(a, table_)) for a in aggregate ]
+      query       = (
           session
           .query(*(aggregate_ + groupby_))
           .filter(filters_)
           .group_by(*groupby_)
       )
+      if orderby is not None:
+        query = query.order_by(str2col(orderby, table_))
+
+      query = query.slice(page * page_size, (page + 1) * page_size)
+
       return result2dict(query.all())
     finally:
       session.close()
 
-  def select(self, table, columns=None, filters={}, page=0, page_size=100):
+  def select(self, table, columns=None, filters={}, page=0, page_size=100, orderby=None):
     table_  = self._table(table)
     columnd = { c.name:c for c in table_.columns }
 
@@ -51,17 +56,22 @@ class Database(object):
     if columns is None:
       columns_ = list(table_.columns)
     else:
-      columns_ = [str2col(c, table_) for c in columns]
+      columns_ = [label(c, str2col(c, table_)) for c in columns]
 
     session = self.sessionmaker()
     try:
-      filters = querify(filters, table_)
+      filters_ = querify(filters, table_)
       query   = (
           session
-          .query(*[label(c, c_) for c, c_ in zip(columns, columns_)])
-          .filter(filters)
-          .slice(page * page_size, (page + 1) * page_size)
+          .query(*columns_)
+          .filter(filters_)
       )
+
+      if orderby is not None:
+        query = query.order_by(str2col(orderby, table_))
+
+      query = query.slice(page * page_size, (page + 1) * page_size)
+
       return result2dict(query.all())
     finally:
       session.close()
@@ -124,6 +134,8 @@ def str2col(field, table):
   """Convert count(distinct(column)) into an actual query-able object"""
   # TODO this should be evaluated with a lexical parser
   # TODO functions of columns don't necessarily preserve type. e.g. DATE(...)
+  # TODO don't recompute column name -> column mapping every time this function
+  #      is called.
 
   # get column by name
   td = { col.name:col for col in table.columns }
