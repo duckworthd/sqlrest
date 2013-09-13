@@ -88,7 +88,7 @@ def json_escape(o):
     for k, v in o.items():
       result[k] = json_escape(v)
     return result
-  if isinstance(o, datetime.datetime):
+  if isinstance(o, datetime.datetime) or isinstance(o, datetime.date):
     return o.isoformat()
   return o
 
