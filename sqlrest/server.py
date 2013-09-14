@@ -34,17 +34,36 @@ def main(config):
 def json_route(app=None, *args, **kwargs):
   """Decorator for routes with JSON parameters as input"""
 
+  # merge dictionaries together, preferring earliest first
+  def merge(*dicts):
+    result = {}
+    for d in reversed(dicts):
+      result.update(d)
+    return result
+
   if app is None:
     app = bottle
 
   def decorate(f):
     def decorated(*args_, **kwargs_):
-      new_kwargs = json_args(bottle.request)
-      new_kwargs.update(kwargs_)
-      return f(*args_, **new_kwargs)
+      # This is necessary for frontend libraries like AngularJS and jQuery to
+      # make AJAX requests.
+      r = bottle.response
+      r.headers['Access-Control-Allow-Origin']  = '*'
+      r.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+      r.headers['Access-Control-Allow-Headers'] = \
+          'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
 
-    decorated = app.get(*args, **kwargs)(decorated)
-    decorated = app.post(*args, **kwargs)(decorated)
+      if bottle.request.method == 'OPTIONS':
+        # an OPTIONS request is a "preflight" request sent before a cross-site
+        # AJAX request is made. It's done by most modern browsers to make sure
+        # that the next GET/POST/whatever request is allowed by the server.
+        return {}
+      else:
+        new_kwargs = json_args(bottle.request)
+        return f(*args_, **merge(new_kwargs, kwargs_))
+
+    decorated = app.route(*args, **merge({"method": ["OPTIONS", "GET", "POST"]}, kwargs))(decorated)
     return decorated
 
   return decorate
@@ -75,7 +94,6 @@ def asjson(o):
   """return a response as json"""
   r = bottle.response
   r.content_type = 'application/json'
-  r.headers['Access-Control-Allow-Origin'] = '*'
   r.body = json.dumps(json_escape(o))
   return r
 
