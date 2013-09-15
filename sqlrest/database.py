@@ -105,7 +105,7 @@ def where_clause(filters, table_):
       if iscontinuous(c) and len(v) == 2:
         # if it's a continuous field and there are 2 values, it's a range query
         clauses.append(c >= v[0])
-        clauses.append(c <= v[1])
+        clauses.append(c  < v[1])
       else:
         # if the field isn't continuous or the number of values != 2, it's an "or" query
         clauses.append( s.or_(*[c == v_ for v_ in v]) )
