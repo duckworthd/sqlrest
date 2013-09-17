@@ -8,6 +8,8 @@ to databases, `bottle` to talk to web clients.
 Usage
 =====
 
+You can initialize sqlrest independently...
+
 ```bash
 # start server on port 8000 mapped to a MySQL instance
 $ python -m sqlrest.server \
@@ -16,6 +18,27 @@ $ python -m sqlrest.server \
   --db.uri "mysql://root:@localhost:3306/kittendb"
 ```
 
+...or by attaching it to another app,
+
+```python
+import bottle
+from sqlrest.server import attach_routes
+
+app = bottle.Bottle()
+
+# attach other routes here
+@app.get("/")
+def hello_world():
+  return "Hello, World!"
+
+# attach sqlrest routes, with URLS prefixed by "/sqlrest". e.g.
+# /sqlrest/kittens/columns, /sqlrest/kittens/select, and
+# /sqlrest/kittens/aggregate to access table `kittens`
+app = attach_routes("mysql://root:@localhost:3306/kittendb", app=app, prefix="/sqlrest")
+
+# start serving content
+app.run(...)
+```
 
 Querying
 ========
