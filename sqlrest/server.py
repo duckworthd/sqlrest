@@ -13,15 +13,7 @@ def main(config):
   db = Database(config.db)
 
   # setup routes
-  app = bottle.Bottle()
-
-  def register(route, f):
-    json_route(app, route)(json_response(f))
-
-  register("/tables",            db.tables)
-  register("/:table/columns",    db.columns)
-  register("/:table/aggregate",  db.aggregate)
-  register("/:table/select",     db.select)
+  app = attach_routes(config.db, prefix=config.frontend.prefix)
 
   # start server
   app.run(
@@ -29,6 +21,31 @@ def main(config):
     host=config.frontend.host,
     server='tornado',
   )
+
+
+def attach_routes(db, app=None, prefix=None):
+  """Attach sqlrest routes to app"""
+
+  if prefix is None:
+    prefix = ''
+
+  # create app, if necessary
+  if app is None:
+    app = bottle.Bottle()
+
+  # connect to db
+  db = Database(db)
+
+  # attach routes
+  def register(route, f):
+    json_route(app, prefix + route)(json_response(f))
+
+  register("/tables",            db.tables)
+  register("/:table/columns",    db.columns)
+  register("/:table/aggregate",  db.aggregate)
+  register("/:table/select",     db.select)
+
+  return app
 
 
 def json_route(app=None, *args, **kwargs):
