@@ -22,6 +22,7 @@ $ python -m sqlrest.server \
 
 ```python
 import bottle
+from configurati import attrs
 from sqlrest.server import attach_routes
 
 app = bottle.Bottle()
@@ -34,7 +35,7 @@ def hello_world():
 # attach sqlrest routes, with URLS prefixed by "/sqlrest". e.g.
 # /sqlrest/kittens/columns, /sqlrest/kittens/select, and
 # /sqlrest/kittens/aggregate to access table `kittens`
-app = attach_routes("mysql://root:@localhost:3306/kittendb", app=app, prefix="/sqlrest")
+app = attach_routes(attrs({'url': "mysql://root:@localhost:3306/kittendb"}), app=app, prefix="/sqlrest")
 
 # start serving content
 app.run(...)
