@@ -125,6 +125,14 @@ def json_escape(o):
     return result
   if isinstance(o, datetime.datetime) or isinstance(o, datetime.date):
     return o.isoformat()
+  if isinstance(o, basestring):
+    # handle unicode encoding errors
+    try:
+      json.dumps(o)
+      return o
+    except UnicodeDecodeError:
+      return o.decode("utf8", errors="replace")
+
   return o
 
 
