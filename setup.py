@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = 'sqlrest',
-    version = '0.1.3',
+    version = '0.1.4',
     author = 'Daniel Duckworth',
     author_email = 'duckworthd@gmail.com',
     description = "Instant REST APIs for SQL tables",
