@@ -6,12 +6,10 @@ import bottle
 import configurati
 
 from .database import Database
+from .log import initialize as init_logging
 
 
 def main(config):
-  # connect to db
-  db = Database(config.db)
-
   # setup routes
   app = attach_routes(config.db, prefix=config.frontend.prefix)
 
@@ -19,7 +17,7 @@ def main(config):
   app.run(
     port=config.frontend.port,
     host=config.frontend.host,
-    server='tornado',
+    server=config.frontend.server,
   )
 
 
@@ -137,8 +135,18 @@ def json_escape(o):
 
 
 if __name__ == '__main__':
+  spec_path = os.path.join(
+    os.path.split(__file__)[0],
+    "config.spec.py"
+  )
   if os.path.exists('config.py'):
-    config = configurati.configure(config_path='config.py')
+    config = configurati.configure(
+      config_path='config.py',
+      spec_path=spec_path
+    )
   else:
-    config = configurati.configure()
+    config = configurati.configure(spec_path=spec_path)
+
+  init_logging()
+
   main(config)

@@ -4,9 +4,13 @@ import sqlalchemy as s
 from sqlalchemy import orm, func
 from sqlalchemy.sql.expression import label
 
+from .log import Loggable
 
-class Database(object):
+
+class Database(Loggable):
   def __init__(self, config):
+    super(Database, self).__init__()
+
     # you'll get 'MySQL server has gone away' errors if you don't set pool_recycle
     engine            = s.create_engine(config.uri, pool_recycle=300)
     self.config       = config
@@ -15,8 +19,13 @@ class Database(object):
 
     # discover what tables are available
     self.meta.reflect(engine)
+    self.log.info("Initialized database: %s", config.uri)
 
   def aggregate(self, table, groupby, filters={}, aggregate='count(*)', page=0, page_size=100, orderby=None):
+    self.log.info((
+        "table=%s, groupby=%s, filters=%s, aggregate=%s, page=%s,"
+        " page_size=%s, orderby=%s"
+      ), table, groupby, filters, aggregate, page, page_size, orderby)
     table_  = self._table(table)
     columnd = { col.name:col for col in table_.columns }
 
@@ -35,12 +44,18 @@ class Database(object):
       query = query.group_by(*groupby_)
       query = with_orderby(query, table_, orderby)
       query = with_pagination(query, table_, page, page_size)
+      result = result2dict(query.all())
 
-      return result2dict(query.all())
+      self.log.info("retrieved %d rows", len(result))
+      return result
+
     finally:
       session.close()
 
   def select(self, table, columns=None, filters={}, page=0, page_size=100, orderby=None):
+    self.log.info((
+        "table=%s, columns=%s, filters=%s, page=%s, page_size=%s, orderby=%s"
+      ), table, columns, filters, page, page_size, orderby)
     table_  = self._table(table)
     columnd = { c.name:c for c in table_.columns }
 
@@ -59,34 +74,26 @@ class Database(object):
       query = with_filters(query, table_, filters)
       query = with_orderby(query, table_, orderby)
       query = with_pagination(query, table_, page, page_size)
-      return result2dict(query.all())
+      result = result2dict(query.all())
+      self.log.info("retrieved %d rows", len(result))
+      return result
     finally:
       session.close()
 
   def tables(self):
+    self.log.info("")
     return self.meta.tables.keys()
 
   def columns(self, table):
-    self.has_table(table)
+    self.log.info("table=%s", table)
     return [c.name for c in self._table(table).columns]
 
   def __str__(self):
     return "Database(%s)" % (self.config.uri,)
 
   def _table(self, table):
-    self.has_table(table)
     return s.Table(table, self.meta, autoload=True)
 
-  def has_columns(self, table, columns):
-    """Check if table has necessary columns"""
-    available_columns = set(self.columns(table))
-    rogue = [c for c in columns if not c in available_columns]
-    if len(rogue) > 0:
-      raise SqlRestException("No column(s) named '%s' in table '%s'" % (", ".join(rogue), table))
-
-  def has_table(self, table):
-    if not table in self.tables():
-      raise SqlRestException("No table named '%s' (available: '%s')" % (table, ", ".join(self.tables())))
 
 
 def where_clause(filters, table_):
