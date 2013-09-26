@@ -2,13 +2,13 @@ from setuptools import setup, find_packages
 
 setup(
     name = 'sqlrest',
-    version = '0.1.4',
+    version = '0.2.0',
     author = 'Daniel Duckworth',
     author_email = 'duckworthd@gmail.com',
     description = "Instant REST APIs for SQL tables",
     license = 'BSD',
     keywords = 'database sql rest api',
-    url = 'github.com/duckworthd/sqlrest',
+    url = 'http://github.com/duckworthd/sqlrest',
     packages = find_packages(),
     classifiers = [
       'Development Status :: 4 - Beta',
