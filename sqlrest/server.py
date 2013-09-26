@@ -51,8 +51,18 @@ def attach_routes(db, app=None, prefix=None):
   register("/:table/columns",    db.columns)
   register("/:table/aggregate",  db.aggregate)
   register("/:table/select",     db.select)
+  app.error(500)(error_handler)
 
   return app
+
+
+def error_handler(exception):
+  # add AJAX headers
+  ajax_headers(bottle.request, bottle.response)
+
+  # print exception string
+  e = exception.exception
+  return e.__class__.__name__ + ": " + str(e)
 
 
 def json_route(app=None, *args, **kwargs):
@@ -70,15 +80,10 @@ def json_route(app=None, *args, **kwargs):
 
   def decorate(f):
     def decorated(*args_, **kwargs_):
-      # This is necessary for frontend libraries like AngularJS and jQuery to
-      # make AJAX requests.
-      r = bottle.response
-      r.headers['Access-Control-Allow-Origin']  = '*'
-      r.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-      r.headers['Access-Control-Allow-Headers'] = \
-          'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
+      # make sure cross site scripting AJAX requests headers are set
+      ajax_headers(bottle.request, bottle.response)
 
-      if bottle.request.method == 'OPTIONS':
+      if bottle.request.method.upper() == 'OPTIONS':
         # an OPTIONS request is a "preflight" request sent before a cross-site
         # AJAX request is made. It's done by most modern browsers to make sure
         # that the next GET/POST/whatever request is allowed by the server.
@@ -141,6 +146,24 @@ def json_escape(o):
       return o.decode("utf8", errors="replace")
 
   return o
+
+
+def ajax_headers(request, response):
+  """Headers necessary for cross-site AJAX requests to work"""
+
+  response.headers['Access-Control-Allow-Origin']  = request.headers.get(
+      "Origin",
+      "*"
+  )
+  response.headers['Access-Control-Allow-Methods'] = request.headers.get(
+      "Access-Control-Request-Method",
+      'GET, POST, OPTIONS'
+  )
+  response.headers['Access-Control-Allow-Headers'] = request.headers.get(
+      "Access-Control-Request-Headers",
+      'Origin, Accept, Content-Type, X-Requested-With'
+  )
+  return response
 
 
 if __name__ == '__main__':
