@@ -11,15 +11,18 @@ class Database(Loggable):
   def __init__(self, config):
     super(Database, self).__init__()
 
-    # you'll get 'MySQL server has gone away' errors if you don't set pool_recycle
+    # pool_recycle: you'll get 'MySQL server has gone away' errors after a few
+    #   hours if you don't enable. See,
+    #   http://docs.sqlalchemy.org/en/rel_0_8/faq.html#mysql-server-has-gone-away
     engine            = s.create_engine(config.uri, pool_recycle=300)
+
     self.config       = config
     self.meta         = s.MetaData(bind=engine)
     self.sessionmaker = orm.sessionmaker(bind=engine)
 
     # discover what tables are available
     self.meta.reflect(engine)
-    self.log.info("Initialized database: %s", config.uri)
+    self.log.info("Initialized database: %s", config.uri.rsplit("/", 1)[-1])
 
   def aggregate(self, table, groupby, filters={}, aggregate='count(*)', page=0, page_size=100, orderby=None):
     self.log.info((
@@ -93,7 +96,6 @@ class Database(Loggable):
 
   def _table(self, table):
     return s.Table(table, self.meta, autoload=True)
-
 
 
 def where_clause(filters, table_):

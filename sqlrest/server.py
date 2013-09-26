@@ -1,6 +1,9 @@
+import gevent.monkey; gevent.monkey.patch_all()
+import psycogreen.gevent; psycogreen.gevent.patch_psycopg()
 import datetime
 import json
 import os
+import re
 
 import bottle
 import configurati
@@ -17,12 +20,18 @@ def main(config):
   app.run(
     port=config.frontend.port,
     host=config.frontend.host,
-    server=config.frontend.server,
+    server='gevent',
   )
 
 
 def attach_routes(db, app=None, prefix=None):
   """Attach sqlrest routes to app"""
+
+  # if connector isn't specified, choose one that's asynchronous
+  if db.uri.startswith("mysql://"):
+    db.uri = re.sub("^mysql://", "mysql+mysqlconnector://", db.uri)
+  elif config.uri.startswith("postgresql://"):
+    db.uri = re.sub("^postgresql://", "postgresql+psycopg2://", db.uri)
 
   if prefix is None:
     prefix = ''
