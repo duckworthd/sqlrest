@@ -35,7 +35,7 @@ def hello_world():
 # attach sqlrest routes, with URLS prefixed by "/sqlrest". e.g.
 # /sqlrest/kittens/columns, /sqlrest/kittens/select, and
 # /sqlrest/kittens/aggregate to access table `kittens`
-app = attach_routes(attrs({'url': "mysql://root:@localhost:3306/kittendb"}), app=app, prefix="/sqlrest")
+app = attach_routes(attrs({'uri': "mysql://root:@localhost:3306/kittendb"}), app=app, prefix="/sqlrest")
 
 # start serving content
 app.run(...)
@@ -123,4 +123,64 @@ before `"2009-09-01"` are included. To select one of a finite set of
   },
   ...
 }
+```
+
+
+Caching
+=======
+
+`sqlrest` supports caching via Redis. By default, caching is disabled, but it
+can be enabled by adding settings `caching.enabled = True` in your config. For
+example,
+
+```bash
+$ redis-server &
+$ python -m sqlrest.server                         \
+  --db.uri "mysql://root:@localhost:3306/kittendb" \
+  --caching.enabled true                           \
+  --caching.config.port 6379                       \
+  --caching.config.host localhost                  \
+  --caching.timeouts '{"select": 300, "aggregate": 900}'
+```
+
+In the event that caching is enabled and `sqlrest` is unable to reach Redis, it
+will issue a log warning but will continue serving as if caching were disabled.
+
+
+Configuration
+=============
+
+Configuration in `sqlrest` is handled by
+[`configurati`](https://github.com/duckworthd/configurati) with the following
+specification,
+
+`config.py`
+
+```Python
+frontend = {  # webapp configuration
+  'port'   : optional(type=int, default=8000),      # port of server
+  'host'   : optional(type=str, default='0.0.0.0'), # IP address of server
+  'prefix' : optional(type=str, default='')         # prefix for all sqlrest endpoints
+}
+
+db = {
+  'uri': required(type=str)   # SQLAlchemy database configuration string
+}
+
+caching = {
+  'enabled' : optional(type=bool, default=False),   # enable caching
+  'config'  : optional(type=dict, default={}),      # cache configuration; see `redis.StrictRedis`
+  'timeouts' : {                                    # ttl for sqlrest endpoints
+    'tables'    : optional(type=int, default=99999),        # for /tables
+    'columns'   : optional(type=int, default=99999),        # for /<table>/columns
+    'select'    : optional(type=int, default=60 * 5),       # for /<table>/select
+    'aggregate' : optional(type=int, default=60 * 60 * 24), # for /<table>/aggregate
+  }
+}
+```
+
+A configuration file can be used via the `--config` command line parameter,
+
+```Python
+$ python -m sqlrest.server --config config.py
 ```

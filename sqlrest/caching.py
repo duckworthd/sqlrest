@@ -152,7 +152,7 @@ class CachingBottle(Loggable):
             self.cache.set(k, v, timeout)
             return v
           except ConnectionError:
-            self.log.info("Failure connecting to Redis: {}; reconstructing...".format(k))
+            self.log.warning("Failure connecting to Redis: {}; reconstructing...".format(k))
             return decorated(*args, **kwargs)
 
       return decorator
