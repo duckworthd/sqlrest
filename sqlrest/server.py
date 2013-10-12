@@ -3,17 +3,22 @@ import psycogreen.gevent; psycogreen.gevent.patch_psycopg()
 import os
 import re
 
-from duxlib.bottle import SuperBottle
+from duxlib.bottle import JsonBottle
 import bottle
 import configurati
 
+from .caching import RedisCache, CachingBottle
 from .database import Database
 from .log import initialize as init_logging
 
 
 def main(config):
   # setup routes
-  app = attach_routes(config.db, prefix=config.frontend.prefix)
+  app = attach_routes(
+    config.db,
+    prefix=config.frontend.prefix,
+    caching=config.caching
+  )
 
   # start server
   app.run(
@@ -23,7 +28,7 @@ def main(config):
   )
 
 
-def attach_routes(db, app=None, prefix=None):
+def attach_routes(db, app=None, prefix=None, caching=None):
   """Attach sqlrest routes to app"""
 
   # if connector isn't specified, choose one that's asynchronous
@@ -42,12 +47,21 @@ def attach_routes(db, app=None, prefix=None):
   # connect to db
   db = Database(db)
 
-  app = SuperBottle(app) # additional routes
-  app.json_route("/tables")          (db.tables)
-  app.json_route("/:table/columns")  (db.columns)
-  app.json_route("/:table/aggregate")(db.aggregate)
-  app.json_route("/:table/select")   (db.select)
+  # add json routes
+  app = JsonBottle(app)
   app.error(500)(error_handler)
+  if caching is None:
+    app.json_route(prefix + "/tables"           )(db.tables    )
+    app.json_route(prefix + "/:table/columns"   )(db.columns   )
+    app.json_route(prefix + "/:table/aggregate" )(db.aggregate )
+    app.json_route(prefix + "/:table/select"    )(db.select    )
+  else:
+    # caching routes, too
+    app = CachingBottle(app, RedisCache(**caching.config))
+    app.json_route(prefix + "/tables"           )(app.memoize(caching.timeouts.tables    )(db.tables    ))
+    app.json_route(prefix + "/:table/columns"   )(app.memoize(caching.timeouts.columns   )(db.columns   ))
+    app.json_route(prefix + "/:table/aggregate" )(app.memoize(caching.timeouts.aggregate )(db.aggregate ))
+    app.json_route(prefix + "/:table/select"    )(app.memoize(caching.timeouts.select    )(db.select    ))
 
   return app
 
@@ -66,10 +80,7 @@ if __name__ == '__main__':
     os.path.split(__file__)[0],
     "config.spec.py"
   )
-  if os.path.exists('config.py'):
-    config = configurati.configure(config='config.py', spec=spec)
-  else:
-    config = configurati.configure(spec=spec)
+  config = configurati.configure(spec=spec)
 
   init_logging()
 
