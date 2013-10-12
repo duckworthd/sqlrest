@@ -1,10 +1,9 @@
 import gevent.monkey; gevent.monkey.patch_all()
 import psycogreen.gevent; psycogreen.gevent.patch_psycopg()
-import datetime
-import json
 import os
 import re
 
+from duxlib.bottle import SuperBottle
 import bottle
 import configurati
 
@@ -43,14 +42,11 @@ def attach_routes(db, app=None, prefix=None):
   # connect to db
   db = Database(db)
 
-  # attach routes
-  def register(route, f):
-    json_route(app, prefix + route)(json_response(f))
-
-  register("/tables",            db.tables)
-  register("/:table/columns",    db.columns)
-  register("/:table/aggregate",  db.aggregate)
-  register("/:table/select",     db.select)
+  app = SuperBottle(app) # additional routes
+  app.json_route("/tables")          (db.tables)
+  app.json_route("/:table/columns")  (db.columns)
+  app.json_route("/:table/aggregate")(db.aggregate)
+  app.json_route("/:table/select")   (db.select)
   app.error(500)(error_handler)
 
   return app
@@ -65,119 +61,15 @@ def error_handler(exception):
   return e.__class__.__name__ + ": " + str(e)
 
 
-def json_route(app=None, *args, **kwargs):
-  """Decorator for routes with JSON parameters as input"""
-
-  # merge dictionaries together, preferring earliest first
-  def merge(*dicts):
-    result = {}
-    for d in reversed(dicts):
-      result.update(d)
-    return result
-
-  if app is None:
-    app = bottle
-
-  def decorate(f):
-    def decorated(*args_, **kwargs_):
-      # make sure cross site scripting AJAX requests headers are set
-      ajax_headers(bottle.request, bottle.response)
-
-      if bottle.request.method.upper() == 'OPTIONS':
-        # an OPTIONS request is a "preflight" request sent before a cross-site
-        # AJAX request is made. It's done by most modern browsers to make sure
-        # that the next GET/POST/whatever request is allowed by the server.
-        return {}
-      else:
-        new_kwargs = json_args(bottle.request)
-        return f(*args_, **merge(new_kwargs, kwargs_))
-
-    decorated = app.route(*args, **merge({"method": ["OPTIONS", "GET", "POST"]}, kwargs))(decorated)
-    return decorated
-
-  return decorate
-
-
-def json_response(f):
-  """Return output a function as a JSON response"""
-
-  def decorated(*args, **kwargs):
-    return asjson(f(*args, **kwargs))
-
-  return decorated
-
-
-def json_args(r):
-  """Get JSON arguments to this request"""
-  if r.json is not None:
-    return r.json
-  else:
-    try:
-      r.body.seek(0)
-      return json.loads(r.body.read())
-    except ValueError as e:
-      return dict(r.params)
-
-
-def asjson(o):
-  """return a response as json"""
-  r = bottle.response
-  r.content_type = 'application/json'
-  r.body = json.dumps(json_escape(o))
-  return r
-
-
-def json_escape(o):
-  if isinstance(o, list):
-    return [json_escape(e) for e in o]
-  if isinstance(o, dict):
-    result = {}
-    for k, v in o.items():
-      result[k] = json_escape(v)
-    return result
-  if isinstance(o, datetime.datetime) or isinstance(o, datetime.date):
-    return o.isoformat()
-  if isinstance(o, basestring):
-    # handle unicode encoding errors
-    try:
-      json.dumps(o)
-      return o
-    except UnicodeDecodeError:
-      return o.decode("utf8", errors="replace")
-
-  return o
-
-
-def ajax_headers(request, response):
-  """Headers necessary for cross-site AJAX requests to work"""
-
-  response.headers['Access-Control-Allow-Origin']  = request.headers.get(
-      "Origin",
-      "*"
-  )
-  response.headers['Access-Control-Allow-Methods'] = request.headers.get(
-      "Access-Control-Request-Method",
-      'GET, POST, OPTIONS'
-  )
-  response.headers['Access-Control-Allow-Headers'] = request.headers.get(
-      "Access-Control-Request-Headers",
-      'Origin, Accept, Content-Type, X-Requested-With'
-  )
-  return response
-
-
 if __name__ == '__main__':
-  spec_path = os.path.join(
+  spec = os.path.join(
     os.path.split(__file__)[0],
     "config.spec.py"
   )
   if os.path.exists('config.py'):
-    config = configurati.configure(
-      config_path='config.py',
-      spec_path=spec_path
-    )
+    config = configurati.configure(config='config.py', spec=spec)
   else:
-    config = configurati.configure(spec_path=spec_path)
+    config = configurati.configure(spec=spec)
 
   init_logging()
 

@@ -1,8 +1,11 @@
 from setuptools import setup, find_packages
 
+import sqlrest
+
+
 setup(
     name = 'sqlrest',
-    version = '0.2.0',
+    version = sqlrest.__version__,
     author = 'Daniel Duckworth',
     author_email = 'duckworthd@gmail.com',
     description = "Instant REST APIs for SQL tables",
@@ -17,12 +20,13 @@ setup(
       'Programming Language :: Python',
     ],
     install_requires = [     # dependencies
-      'configurati>=0.1.3',
+      'configurati>=0.2.0',
       'bottle>=0.11.6',
       'SQLAlchemy>=0.8.2',
       'mysql-connector-python>=1.0.12',
       'psycopg2>=2.5.1',
       'psycogreen>=1.0',
       'gevent>=0.13.8',
+      'duxlib>=0.1.0',
     ],
 )
