@@ -21,7 +21,7 @@ setup(
     ],
     install_requires = [     # dependencies
       # command line config
-      'configurati>=0.2.0',
+      'configurati>=0.2.2',
 
       # connecting to databases
       'SQLAlchemy>=0.8.2',
@@ -34,7 +34,7 @@ setup(
 
       # webserver
       'bottle>=0.11.6',
-      'duxlib>=0.1.0',
+      'duxlib>=0.1.1',
 
       # caching
       'redis>=2.7.1',
