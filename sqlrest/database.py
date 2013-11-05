@@ -1,6 +1,8 @@
 import re
+import sys
 
 import sqlalchemy as s
+from dateutil.parser import parse as parse_dt
 from sqlalchemy import orm, func
 from sqlalchemy.sql.expression import label
 
@@ -80,6 +82,43 @@ class Database(Loggable):
       result = result2dict(query.all())
       self.log.info("retrieved %d rows", len(result))
       return result
+    finally:
+      session.close()
+
+  def insert(self, table, rows):
+    table_  = self._table(table)
+    session = self.sessionmaker()
+    try:
+      # coerce columns based on table_'s types
+      rows = [dict2row(table_, row) for row in rows]
+      session.execute(table_.insert().values(rows))
+      session.commit()
+      return {
+          'status': 'success',
+          'n_rows': len(rows)
+      }
+    finally:
+      session.close()
+
+  def delete(self, table, filters):
+    table_  = self._table(table)
+    session = self.sessionmaker()
+    try:
+      # get number of rows to be deleted (this isn't threadsafe)
+      query = session.query(func.count(list(table_.columns)[0]))
+      query = with_filters(query, table_, filters)
+      n = query.all()[0][0]
+
+      # actually delete rows
+      session.execute(
+        table_.delete(where_clause(filters, table_))
+      )
+      session.commit()
+
+      return {
+          'status': 'success',
+          'n_rows': n
+      }
     finally:
       session.close()
 
@@ -197,6 +236,30 @@ def result2dict(r):
   result = []
   for e in r:
     result.append( { key:getattr(e, key) for key in e.keys() } )
+  return result
+
+
+def dict2row(table_, row):
+  """Coerce `row`'s value types as necessary"""
+  result = {}
+  columns = { c.name: c for c in table_.columns }
+  for k, v in row.items():
+    if not k in columns:
+      raise SqlRestException(
+          "Column '{}' doesn't exist in table '{}'".format(k, table_.name)
+      )
+
+    # convert date types
+    type = columns[k].type
+    if isinstance(type, s.types.Date):
+      v = parse_dt(v).date()
+    elif isinstance(type, s.types.DateTime):
+      v = parse_dt(v)
+
+    # no need to convert boolean, numeric, or string types. only remaining type
+    # is interval, but I don't have a good parser for it...
+    result[k] = v
+
   return result
 
 

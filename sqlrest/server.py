@@ -62,6 +62,9 @@ def attach_routes(db, app=None, prefix=None, caching=None):
     app.json_route(prefix + "/:table/columns"   )(app.memoize(caching.timeouts.columns   )(db.columns   ))
     app.json_route(prefix + "/:table/aggregate" )(app.memoize(caching.timeouts.aggregate )(db.aggregate ))
     app.json_route(prefix + "/:table/select"    )(app.memoize(caching.timeouts.select    )(db.select    ))
+    app.json_route(prefix + "/:table", method=["POST", "GET"])(app.memoize(caching.timeouts.select    )(db.select    ))
+    app.json_route(prefix + "/:table", method=["PUT"])(db.insert)
+    app.json_route(prefix + "/:table", method=["DELETE"])(db.delete)
 
   return app
 
