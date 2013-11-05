@@ -196,26 +196,33 @@ specification,
 `config.py`
 
 ```Python
-frontend = {  # webapp configuration
-  'port'   : optional(type=int, default=8000),      # port of server
-  'host'   : optional(type=str, default='0.0.0.0'), # IP address of server
-  'prefix' : optional(type=str, default='')         # prefix for all sqlrest endpoints
+frontend = {
+  'port'   : optional(type=int, default=8000),
+  'host'   : optional(type=str, default='0.0.0.0'),
+  'prefix' : optional(type=str, default='')
 }
 
 db = {
-  'uri': required(type=str)   # SQLAlchemy database configuration string
+  'uri': required(type=str)
 }
 
 caching = {
-  'enabled' : optional(type=bool, default=False),   # enable caching
-  'config'  : optional(type=dict, default={}),      # cache configuration; see `redis.StrictRedis`
-  'timeouts' : {                                    # ttl for sqlrest endpoints
-    'tables'    : optional(type=int, default=99999),        # for /tables
-    'columns'   : optional(type=int, default=99999),        # for /<table>/columns
-    'select'    : optional(type=int, default=60 * 5),       # for /<table>/select
-    'aggregate' : optional(type=int, default=60 * 60 * 24), # for /<table>/aggregate
+  'enabled' : optional(type=bool, default=False),
+
+  # I don't really want to copy/paste all of redis.StrictRedis's
+  # arguments, so I'll just leave this as a dict
+  'config'  : optional(type=dict, default={}),
+
+  'timeouts' : {
+    'tables'    : optional(type=int, default=99999),
+    'columns'   : optional(type=int, default=99999),
+    'select'    : optional(type=int, default=60 * 5),
+    'aggregate' : optional(type=int, default=60 * 60 * 24),
   }
 }
+
+# enable create, update, delete endpoints
+editing = optional(type=bool, default=False)
 ```
 
 A configuration file can be used via the `--config` command line parameter,
