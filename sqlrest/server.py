@@ -65,6 +65,7 @@ def attach_routes(db, app=None, prefix=None, caching=None):
     app.json_route(prefix + "/:table", method=["POST", "GET"])(app.memoize(caching.timeouts.select    )(db.select    ))
     app.json_route(prefix + "/:table", method=["PUT"])(db.insert)
     app.json_route(prefix + "/:table", method=["DELETE"])(db.delete)
+    app.json_route(prefix + "/:table", method=["PATCH"])(db.update)
 
   return app
 

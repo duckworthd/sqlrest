@@ -104,14 +104,44 @@ class Database(Loggable):
     table_  = self._table(table)
     session = self.sessionmaker()
     try:
-      # get number of rows to be deleted (this isn't threadsafe)
-      query = session.query(func.count(list(table_.columns)[0]))
-      query = with_filters(query, table_, filters)
-      n = query.all()[0][0]
+      # count number of rows to be deleted
+      n = self.count(table, filters)
 
       # actually delete rows
       session.execute(
         table_.delete(where_clause(filters, table_))
+      )
+      session.commit()
+
+      return {
+          'status': 'success',
+          'n_rows': n
+      }
+    finally:
+      session.close()
+
+  def count(self, table, filters):
+    table_  = self._table(table)
+    session = self.sessionmaker()
+    try:
+      # get number of rows to be deleted (this isn't threadsafe)
+      query = session.query(func.count(list(table_.columns)[0]))
+      query = with_filters(query, table_, filters)
+      return query.all()[0][0]
+    finally:
+      session.close()
+
+  def update(self, table, filters, values):
+    table_  = self._table(table)
+    session = self.sessionmaker()
+    try:
+      n = self.count(table, filters)
+
+      session.execute(
+        table_
+          .update()
+          .where(where_clause(filters, table_))
+          .values(dict2row(table_, values))
       )
       session.commit()
 
