@@ -89,7 +89,14 @@ class Database(Loggable):
 
   def columns(self, table):
     self.log.info("table=%s", table)
-    return [c.name for c in self._table(table).columns]
+    columns = []
+    for column in self._table(table).columns:
+      columns.append({
+        'name'        : column.name,
+        'type'        : str(column.type),
+        'description' : column.description,
+      })
+    return columns
 
   def __str__(self):
     return "Database(%s)" % (self.config.uri,)
