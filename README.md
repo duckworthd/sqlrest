@@ -125,6 +125,45 @@ before `"2009-09-01"` are included. To select one of a finite set of
 }
 ```
 
+Create, Update, Delete
+======================
+
+
+```bash
+# INSERT INTO kittens
+#   (name, breed, birthday)
+#   VALUES
+#     ("Mittens", "Persian", "2009-08-01"),
+#     ( "Tigger",  "Calico", "2009-09-01");
+$ http PUT localhost:8000/kittens <<< '{
+    "rows": [
+      {
+        "name": "Mittens",
+        "breed": "Persian",
+        "birthday": "2009-08-01"
+      },
+      {
+        "name": "Tigger",
+        "breed": "Calico",
+        "birthday": "2009-09-01"
+      }
+    ]
+  }'
+
+# DELETE FROM kittens
+#   WHERE name = "Tigger";
+$ http DELETE localhost:8000/kittens <<< '{
+    "filters": { "name": "Tigger" }
+  }'
+
+# UPDATE kittens
+#   SET birthday = "2009-08-01"
+#   WHERE name = "Mittens";
+$ http PATCH localhost:8000/kittens <<< '{
+    "filters" : { "name"     : "Mittens"   },
+    "values"  : { "birthday" : "2009-08-01"}
+  }'
+```
 
 Caching
 =======
