@@ -17,7 +17,8 @@ def main(config):
   app = attach_routes(
     config.db,
     prefix=config.frontend.prefix,
-    caching=config.caching
+    caching=config.caching,
+    editing=config.editing,
   )
 
   # start server
@@ -28,7 +29,7 @@ def main(config):
   )
 
 
-def attach_routes(db, app=None, prefix=None, caching=None):
+def attach_routes(db, app=None, prefix=None, caching=None, editing=False):
   """Attach sqlrest routes to app"""
 
   # if connector isn't specified, choose one that's asynchronous
@@ -63,9 +64,19 @@ def attach_routes(db, app=None, prefix=None, caching=None):
     app.json_route(prefix + "/:table/aggregate" )(app.memoize(caching.timeouts.aggregate )(db.aggregate ))
     app.json_route(prefix + "/:table/select"    )(app.memoize(caching.timeouts.select    )(db.select    ))
     app.json_route(prefix + "/:table", method=["POST", "GET"])(app.memoize(caching.timeouts.select    )(db.select    ))
-    app.json_route(prefix + "/:table", method=["PUT"])(db.insert)
-    app.json_route(prefix + "/:table", method=["DELETE"])(db.delete)
-    app.json_route(prefix + "/:table", method=["PATCH"])(db.update)
+    if editing:
+      app.json_route(prefix + "/:table", method=["PUT"])(db.insert)
+      app.json_route(prefix + "/:table", method=["DELETE"])(db.delete)
+      app.json_route(prefix + "/:table", method=["PATCH"])(db.update)
+    else:
+      def not_enabled(*args, **kwargs):
+        return {
+            "status": "failure",
+            "reason": "destructive operations not enabled"
+        }
+      app.json_route(prefix + "/:table", method=["PUT"])(not_enabled)
+      app.json_route(prefix + "/:table", method=["DELETE"])(not_enabled)
+      app.json_route(prefix + "/:table", method=["PATCH"])(not_enabled)
 
   return app
 
